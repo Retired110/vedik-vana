@@ -7,6 +7,7 @@ import { Navbar } from '@/components/layout/Navbar';
 import { Footer } from '@/components/layout/Footer';
 import { CartDrawer } from '@/components/cart/CartDrawer';
 import { VedaMitraChat } from '@/components/ai/VedaMitraChat';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'Vedik Vana | Sacred Botanicals, Pure Himalayan Shilajit & Wood-Pressed Oils',
@@ -65,6 +66,7 @@ export default async function RootLayout({
           <CartDrawer />
           <VedaMitraChat />
         </CartProvider>
+        <Analytics />
       </body>
     </html>
   );
