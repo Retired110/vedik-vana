@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="100%" height="100%">
+  <rect width="600" height="600" fill="#F4EFE6"/>
+  <circle cx="300" cy="300" r="180" fill="none" stroke="#C99A52" stroke-width="2" stroke-dasharray="6 6" opacity="0.6"/>
+  <circle cx="300" cy="300" r="160" fill="#1B382B" opacity="0.05"/>
+  <g transform="translate(300, 260) scale(1.5)">
+    <path d="M0 -30 C15 -10 25 10 0 35 C-25 10 -15 -10 0 -30 Z" fill="#1B382B" opacity="0.8"/>
+    <path d="M0 -25 L0 30" stroke="#C99A52" stroke-width="2"/>
+    <path d="M0 -5 Q10 0 14 -10" stroke="#C99A52" stroke-width="1.5" fill="none"/>
+    <path d="M0 10 Q-10 15 -14 5" stroke="#C99A52" stroke-width="1.5" fill="none"/>
+  </g>
+  <text x="300" y="360" font-family="'Playfair Display', Georgia, serif" font-size="20" font-weight="bold" fill="#1B382B" text-anchor="middle" letter-spacing="3">VEDIK VANA</text>
+  <text x="300" y="388" font-family="'Plus Jakarta Sans', sans-serif" font-size="11" font-weight="600" fill="#A37A37" text-anchor="middle" letter-spacing="4">SACRED BOTANICAL HARVEST</text>
+  <text x="300" y="415" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" fill="#7F8E86" text-anchor="middle">Authentic Herbarium Specimen</text>
+</svg>

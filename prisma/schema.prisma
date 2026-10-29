@@ -1,0 +1,321 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  description  String?
+  image        String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  products     Product[]
+}
+
+model Collection {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  description  String?
+  bannerImage  String?
+  displayOrder Int       @default(0)
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model Product {
+  id                  String             @id @default(cuid())
+  slug                String             @unique
+  name                String
+  sku                 String             @unique
+  barcode             String?
+  shortDescription    String
+  fullDescription     String
+  categoryId          String
+  category            Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  subcategory         String?
+  tags                String?            // Comma-separated tags or JSON
+  regularPricePaise   Int                // e.g. 99900 = ₹999.00
+  sellingPricePaise   Int                // e.g. 79900 = ₹799.00
+  compareAtPricePaise Int?               // MRP or strike-through price
+  inventoryQty        Int                @default(0)
+  lowStockThreshold   Int                @default(5)
+  status              String             @default("PUBLISHED") // DRAFT, PUBLISHED, ARCHIVED
+  availability        String             @default("IN_STOCK")  // IN_STOCK, LOW_STOCK, OUT_OF_STOCK, PREORDER, DISCONTINUED
+  isFeatured          Boolean            @default(false)
+  isBestseller        Boolean            @default(false)
+  isNewArrival        Boolean            @default(false)
+  isSale              Boolean            @default(false)
+  
+  // Regulated & Botanical provenance attributes
+  farmOrigin          String?            // e.g. "Kashmir Valley, Altitude 1600m"
+  harvestInfo         String?            // e.g. "Autumn Harvest 2024, Hand-picked"
+  grade               String?            // e.g. "Grade A+ Mongra"
+  netWeight           String?            // e.g. "25g", "500ml", "1kg"
+  batchNumber         String?            // e.g. "VV-KSM-2024-B12"
+  fssaiNumber         String?            // e.g. "10020011000452"
+  mfgDate             String?
+  expiryDate          String?            // e.g. "24 months from packaging"
+  storageInstructions String?            // e.g. "Store in airtight amber glass away from sunlight"
+  shelfLife           String?
+  ingredients         String?            // Comma separated or botanical description
+  
+  // SEO attributes
+  seoTitle            String?
+  seoDescription      String?
+  seoImage            String?
+  
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  
+  images              ProductImage[]
+  variants            ProductVariant[]
+  reviews             Review[]
+  orderItems          OrderItem[]
+  movements           InventoryMovement[]
+}
+
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  sortOrder Int      @default(0)
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id                  String             @id @default(cuid())
+  productId           String
+  product             Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name                String             // e.g. "250g Glass Jar", "500g Eco Refill", "1kg Value Pack"
+  sku                 String             @unique
+  pricePaise          Int
+  compareAtPricePaise Int?
+  inventoryQty        Int                @default(0)
+  isDefault           Boolean            @default(false)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  orderItems          OrderItem[]
+  movements           InventoryMovement[]
+}
+
+model Order {
+  id                String      @id @default(cuid())
+  orderNumber       String      @unique // e.g. "VV-2024-1001"
+  customerId        String?
+  customer          Customer?   @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  customerName      String
+  customerEmail     String
+  customerPhone     String
+  shippingAddress   String      // JSON string of address details (street, city, state, pin)
+  billingAddress    String?     // JSON string
+  subtotalPaise     Int
+  discountPaise     Int         @default(0)
+  couponCode        String?
+  shippingPaise     Int         @default(0)
+  taxPaise          Int         @default(0)
+  totalPaise        Int
+  
+  status            String      @default("PENDING") // PENDING, CONFIRMED, PROCESSING, SHIPPED, DELIVERED, CANCELLED, REFUNDED
+  paymentStatus     String      @default("PENDING") // PENDING, PAID, FAILED, REFUNDED
+  paymentMethod     String      @default("CASH_ON_DELIVERY") // RAZORPAY, CASH_ON_DELIVERY
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  
+  deliveryOtp       String?     // 4-digit secure delivery verification OTP
+  deliveryOtpVerified Boolean   @default(false)
+  
+  trackingNumber    String?
+  courierName       String?
+  notes             String?
+  
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  items             OrderItem[]
+}
+
+model OrderItem {
+  id             String          @id @default(cuid())
+  orderId        String
+  order          Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String?
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  variantId      String?
+  variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  productName    String
+  variantName    String?
+  unitPricePaise Int
+  quantity       Int
+  totalPaise     Int
+  image          String?
+  createdAt      DateTime        @default(now())
+}
+
+model InventoryMovement {
+  id          String          @id @default(cuid())
+  productId   String
+  product     Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  variantId   String?
+  variant     ProductVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  changeQty   Int             // e.g. -2 or +50
+  previousQty Int?
+  newQty      Int
+  reason      String          // ORDER_PLACED, RESTOCK, MANUAL_ADJUSTMENT, DAMAGED
+  referenceId String?         // orderId or adminId
+  notes       String?
+  createdAt   DateTime        @default(now())
+}
+
+model Coupon {
+  id                 String    @id @default(cuid())
+  code               String    @unique
+  description        String?
+  discountType       String    // PERCENTAGE, FIXED_AMOUNT
+  discountValue      Int       // % or paise
+  minOrderValuePaise Int       @default(0)
+  maxDiscountPaise   Int?
+  startDate          DateTime?
+  endDate            DateTime?
+  usageLimit         Int?
+  usageCount         Int       @default(0)
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+}
+
+model Review {
+  id                 String    @id @default(cuid())
+  productId          String
+  product            Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customerName       String
+  customerEmail      String?
+  rating             Int       // 1 to 5
+  title              String?
+  comment            String
+  isApproved         Boolean   @default(false)
+  isVerifiedPurchase Boolean   @default(false)
+  helpfulVotes       Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @default(now()) @updatedAt
+}
+
+model HomepageSection {
+  id           String    @id @default(cuid())
+  sectionKey   String    @unique // e.g. HERO_BANNER, BRAND_STORY, FAQ_SECTION, TRUST_BADGES
+  title        String
+  subtitle     String?
+  content      String    // JSON stringified configuration
+  isEnabled    Boolean   @default(true)
+  displayOrder Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+}
+
+model StoreSettings {
+  id                         String   @id @default("default")
+  storeName                  String   @default("Vedik Vana")
+  tagline                    String   @default("Sacred Botanical Living — 100% Pure, Wild-Harvested & Farm-Traceable")
+  logoUrl                    String?
+  contactEmail               String   @default("care@vedikvana.com")
+  contactPhone               String   @default("+91 98765 43210")
+  address                    String   @default("Vedic Vana Botanicals Pvt Ltd, Sector 62, Noida, Uttar Pradesh, 201309")
+  fssaiLicence               String   @default("10024011000918")
+  freeShippingThresholdPaise Int      @default(99900) // ₹999 free shipping
+  standardShippingFeePaise   Int      @default(9900)  // ₹99 shipping
+  taxRatePercent             Int      @default(5)     // 5% GST for organic foods/herbs
+  codEnabled                 Boolean  @default(true)
+  razorpayKeyId              String   @default("rzp_test_sampleKey123")
+  razorpayKeySecret          String   @default("sampleSecret456")
+  announcementText           String   @default("✨ Free Express Shipping across India on orders above ₹999 | 100% Lab-Certified Organics")
+  announcementActive         Boolean  @default(true)
+  currency                   String   @default("INR")
+  currencySymbol             String   @default("₹")
+  
+  // Extended Business & Compliance Settings
+  gstNumber                  String?  @default("")
+  supportWhatsapp            String?  @default("+91 98765 43210")
+  socialLinks                String?  @default("{}") // JSON: { instagram, facebook, youtube }
+  defaultCouponCode          String?  @default("VEDIK15")
+  returnPolicyText           String?  @default("7-day return window on unopened items in tamper-evident packaging.")
+  footerText                 String?  @default("100% pure wild-harvested botanicals and wood-pressed oils.")
+  seoTitle                   String?  @default("Vedik Vana | Pure Himalayan Shilajit & Wood-Pressed Oils")
+  seoDescription             String?  @default("Authentic Ayurvedic formulations, Grade-A Himalayan Shilajit, Kashmiri Mongra Saffron, and Wood-Pressed Virgin Oils.")
+  themeColors                String?  @default("{}")
+  
+  // AI Bot Settings
+  aiChatEnabled              Boolean  @default(true)
+  geminiApiKey               String?
+  defaultBotGreeting         String?
+  
+  updatedAt                  DateTime @updatedAt
+}
+
+model Customer {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  phone        String?    @unique
+  passwordHash String?
+  addresses    String?    // JSON string array of saved addresses
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  orders       Order[]
+}
+
+model AdminUser {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  uniqueStaffId String?  @unique // e.g. "VV-ADMIN-01"
+  name          String
+  passwordHash  String
+  role          String   @default("OWNER") // OWNER, MANAGER, INVENTORY, ORDERS
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model OtpVerification {
+  id         String   @id @default(cuid())
+  identifier String   // email or mobile phone
+  code       String   // Hashed 6-digit OTP code
+  type       String   // LOGIN, REGISTRATION, PASSWORD_RESET, ORDER_CONFIRMATION
+  attempts   Int      @default(0) // max 3 wrong attempts allowed
+  ipAddress  String?  // for IP-level rate limiting
+  expiresAt  DateTime
+  verified   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model BotInteraction {
+  id          String   @id @default(cuid())
+  sessionId   String
+  userMessage String
+  botResponse String
+  language    String   @default("en")
+  location    String?
+  feedback    String?  // HELPFUL, UNHELPFUL
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String?
+  action    String   // e.g. "PRODUCT_CREATED", "PRICE_CHANGED", "ORDER_STATUS_UPDATED"
+  details   String?  // JSON
+  ipAddress String?
+  createdAt DateTime @default(now())
+}
