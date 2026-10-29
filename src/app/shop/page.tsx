@@ -61,23 +61,34 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     orderBy = { isBestseller: 'desc' };
   }
 
-  const [products, categories, totalCount] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      orderBy,
-      include: {
-        category: true,
-        images: { orderBy: { sortOrder: 'asc' } },
-        variants: true,
-      },
-    }),
-    prisma.category.findMany({
-      where: { isActive: true },
-      include: { _count: { select: { products: true } } },
-      orderBy: { displayOrder: 'asc' },
-    }),
-    prisma.product.count({ where }),
-  ]);
+  let products: any[] = [];
+  let categories: any[] = [];
+  let totalCount = 0;
+
+  try {
+    const results = await Promise.all([
+      prisma.product.findMany({
+        where,
+        orderBy,
+        include: {
+          category: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          variants: true,
+        },
+      }),
+      prisma.category.findMany({
+        where: { isActive: true },
+        include: { _count: { select: { products: true } } },
+        orderBy: { displayOrder: 'asc' },
+      }),
+      prisma.product.count({ where }),
+    ]);
+    products = results[0] || [];
+    categories = results[1] || [];
+    totalCount = results[2] || 0;
+  } catch (err) {
+    console.warn('Shop database query fallback:', err);
+  }
 
   const activeCategory = categories.find((c) => c.slug === category);
 

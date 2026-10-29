@@ -17,48 +17,65 @@ import {
 export const revalidate = 60; // Auto revalidate every 60s
 
 export default async function HomePage() {
-  // Fetch real database records
-  const [categories, bestsellers, featuredProducts, newArrivals, sections, reviews] = await Promise.all([
-    prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { displayOrder: 'asc' },
-      include: { _count: { select: { products: true } } },
-    }),
-    prisma.product.findMany({
-      where: { status: 'PUBLISHED', isBestseller: true },
-      take: 4,
-      include: {
-        category: true,
-        images: { orderBy: { sortOrder: 'asc' } },
-        variants: true,
-      },
-    }),
-    prisma.product.findMany({
-      where: { status: 'PUBLISHED', isFeatured: true },
-      take: 4,
-      include: {
-        category: true,
-        images: { orderBy: { sortOrder: 'asc' } },
-        variants: true,
-      },
-    }),
-    prisma.product.findMany({
-      where: { status: 'PUBLISHED', isNewArrival: true },
-      take: 4,
-      include: {
-        category: true,
-        images: { orderBy: { sortOrder: 'asc' } },
-        variants: true,
-      },
-    }),
-    prisma.homepageSection.findMany(),
-    prisma.review.findMany({
-      where: { isApproved: true },
-      take: 3,
-      orderBy: { rating: 'desc' },
-      include: { product: true },
-    }),
-  ]);
+  // Fetch database records with resilient fallback
+  let categories: any[] = [];
+  let bestsellers: any[] = [];
+  let featuredProducts: any[] = [];
+  let newArrivals: any[] = [];
+  let sections: any[] = [];
+  let reviews: any[] = [];
+
+  try {
+    const results = await Promise.all([
+      prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { displayOrder: 'asc' },
+        include: { _count: { select: { products: true } } },
+      }),
+      prisma.product.findMany({
+        where: { status: 'PUBLISHED', isBestseller: true },
+        take: 4,
+        include: {
+          category: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          variants: true,
+        },
+      }),
+      prisma.product.findMany({
+        where: { status: 'PUBLISHED', isFeatured: true },
+        take: 4,
+        include: {
+          category: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          variants: true,
+        },
+      }),
+      prisma.product.findMany({
+        where: { status: 'PUBLISHED', isNewArrival: true },
+        take: 4,
+        include: {
+          category: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          variants: true,
+        },
+      }),
+      prisma.homepageSection.findMany(),
+      prisma.review.findMany({
+        where: { isApproved: true },
+        take: 3,
+        orderBy: { rating: 'desc' },
+        include: { product: true },
+      }),
+    ]);
+    categories = results[0] || [];
+    bestsellers = results[1] || [];
+    featuredProducts = results[2] || [];
+    newArrivals = results[3] || [];
+    sections = results[4] || [];
+    reviews = results[5] || [];
+  } catch (err) {
+    console.warn('Homepage database query fallback:', err);
+  }
 
   // Parse section configs
   const sectionMap: Record<string, any> = {};

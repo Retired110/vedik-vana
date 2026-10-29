@@ -13,54 +13,68 @@ interface ProductPageProps {
 export const revalidate = 30; // 30s cache
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
-  const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-  });
+  try {
+    const product = await prisma.product.findUnique({
+      where: { slug: params.slug },
+    });
 
-  if (!product) {
-    return { title: 'Product Not Found | Vedik Vana' };
+    if (!product) {
+      return { title: 'Product Not Found | Vedik Vana' };
+    }
+
+    return {
+      title: `${product.seoTitle || product.name} | Vedik Vana`,
+      description: product.seoDescription || product.shortDescription,
+      openGraph: {
+        title: product.name,
+        description: product.shortDescription,
+      },
+    };
+  } catch {
+    return { title: 'Sacred Botanicals | Vedik Vana' };
   }
-
-  return {
-    title: `${product.seoTitle || product.name} | Vedik Vana`,
-    description: product.seoDescription || product.shortDescription,
-    openGraph: {
-      title: product.name,
-      description: product.shortDescription,
-    },
-  };
 }
 
 export default async function ProductPage({ params }: ProductPageProps) {
-  const product = await prisma.product.findUnique({
-    where: { slug: params.slug },
-    include: {
-      category: true,
-      images: { orderBy: { sortOrder: 'asc' } },
-      variants: { orderBy: { pricePaise: 'asc' } },
-      reviews: {
-        where: { isApproved: true },
-        orderBy: { createdAt: 'desc' },
+  let product: any = null;
+  let relatedProducts: any[] = [];
+
+  try {
+    product = await prisma.product.findUnique({
+      where: { slug: params.slug },
+      include: {
+        category: true,
+        images: { orderBy: { sortOrder: 'asc' } },
+        variants: { orderBy: { pricePaise: 'asc' } },
+        reviews: {
+          where: { isApproved: true },
+          orderBy: { createdAt: 'desc' },
+        },
       },
-    },
-  });
+    });
+
+    if (product) {
+      relatedProducts = await prisma.product.findMany({
+        where: {
+          categoryId: product.categoryId,
+          id: { not: product.id },
+          status: 'PUBLISHED',
+        },
+        take: 4,
+        include: {
+          category: true,
+          images: { orderBy: { sortOrder: 'asc' } },
+          variants: true,
+        },
+      });
+    }
+  } catch (err) {
+    console.warn('Product page DB query fallback:', err);
+  }
 
   if (!product) {
     notFound();
   }
-
-  // Related products from same category
-  const relatedProducts = await prisma.product.findMany({
-    where: {
-      categoryId: product.categoryId,
-      id: { not: product.id },
-      status: 'PUBLISHED',
-    },
-    take: 4,
-    include: {
-      images: { where: { isPrimary: true }, take: 1 },
-    },
-  });
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
