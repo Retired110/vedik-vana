@@ -650,7 +650,7 @@ export default function LoginPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-stone-300 block mb-1">
-                      Registered Email Address * <span className="text-brand-gold text-[10px] font-normal">(Compulsory)</span>
+                      Registered Email Address <span className="text-brand-gold">*</span>
                     </label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
@@ -756,7 +756,7 @@ export default function LoginPage() {
                 <form onSubmit={handlePasswordLogin} className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-stone-300 block mb-1">
-                      Email Address * <span className="text-brand-gold text-[10px] font-normal">(Compulsory)</span>
+                      Email Address <span className="text-brand-gold">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -844,7 +844,7 @@ export default function LoginPage() {
 
                   <div>
                     <label className="text-xs font-semibold text-stone-300 block mb-1">
-                      Email Address * <span className="text-brand-gold text-[10px] font-normal">(Compulsory for login & invoices)</span>
+                      Email Address <span className="text-brand-gold">*</span>
                     </label>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
