@@ -230,6 +230,9 @@ export function Footer({ settings }: { settings?: any }) {
             {settings?.gstNumber && (
               <span>GSTIN: {settings.gstNumber}</span>
             )}
+            <Link href="/admin/login" className="hover:text-stone-300 transition-colors">
+              Merchant Portal
+            </Link>
           </div>
         </div>
       </div>
