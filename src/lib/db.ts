@@ -1,8 +1,28 @@
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
+import fs from 'fs';
 
-// Ensure DATABASE_URL is set and resolves correctly in both local and Vercel serverless environments
-if (!process.env.DATABASE_URL || process.env.DATABASE_URL.startsWith('file:.')) {
+// Handle Vercel serverless environment (where /var/task is read-only)
+// Copy the database to writable /tmp so SQLite operations can write without error
+if (process.env.VERCEL) {
+  const tmpDbPath = '/tmp/dev.db';
+  const originalDbPath = path.join(process.cwd(), 'prisma', 'dev.db');
+
+  if (!fs.existsSync(tmpDbPath)) {
+    try {
+      if (fs.existsSync(originalDbPath)) {
+        fs.copyFileSync(originalDbPath, tmpDbPath);
+        try {
+          fs.chmodSync(tmpDbPath, 0o666);
+        } catch {}
+      }
+    } catch (err) {
+      console.warn('Failed to copy database to /tmp:', err);
+    }
+  }
+
+  process.env.DATABASE_URL = `file:${tmpDbPath}`;
+} else if (!process.env.DATABASE_URL || process.env.DATABASE_URL.startsWith('file:.')) {
   const dbPath = path.join(process.cwd(), 'prisma', 'dev.db');
   process.env.DATABASE_URL = `file:${dbPath}`;
 }
