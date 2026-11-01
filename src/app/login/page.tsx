@@ -66,6 +66,7 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [noAccountPrompt, setNoAccountPrompt] = useState(false);
   const [firebaseGoogleSetupNeeded, setFirebaseGoogleSetupNeeded] = useState(false);
+  const [firebaseUnauthorizedDomain, setFirebaseUnauthorizedDomain] = useState<string | null>(null);
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -115,6 +116,8 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMsg(null);
     setSuccessMsg(null);
+    setFirebaseGoogleSetupNeeded(false);
+    setFirebaseUnauthorizedDomain(null);
 
     try {
       const auth = getFirebaseAuth();
@@ -163,6 +166,10 @@ export default function LoginPage() {
       } else if (err.code === 'auth/operation-not-allowed' || err.code === 'auth/configuration-not-found') {
         setFirebaseGoogleSetupNeeded(true);
         setErrorMsg('Google Provider must be enabled in Firebase Console (1-click setup).');
+      } else if (err.code === 'auth/unauthorized-domain') {
+        const host = typeof window !== 'undefined' ? window.location.hostname : '';
+        setFirebaseUnauthorizedDomain(host);
+        setErrorMsg(`Domain "${host}" is not authorized in Firebase Console.`);
       } else {
         setErrorMsg(err.message || 'Failed to sign in with Google.');
       }
@@ -275,8 +282,9 @@ export default function LoginPage() {
       const data = await res.json();
       if (data.success) {
         setSuccessMsg(data.message || 'Signed in successfully!');
+        const target = data.redirectUrl || redirectTarget;
         setTimeout(() => {
-          router.push(redirectTarget);
+          router.push(target);
           router.refresh();
         }, 500);
       } else {
@@ -596,6 +604,31 @@ export default function LoginPage() {
                     <p className="text-[10px] text-stone-400 text-center">
                       Or sign in immediately below using Email OTP or Password.
                     </p>
+                  </div>
+                )}
+                {firebaseUnauthorizedDomain && (
+                  <div className="mt-3 pt-3 border-t border-rose-800/60 space-y-2">
+                    <p className="text-[11px] text-stone-300 leading-relaxed font-medium">
+                      Firebase requires authorizing this domain (1-minute setup):
+                    </p>
+                    <div className="bg-brand-forest-950 p-2 rounded-lg border border-brand-forest-800 font-mono text-[11px] text-brand-gold select-all break-all">
+                      {firebaseUnauthorizedDomain}
+                    </div>
+                    <ol className="list-decimal pl-4 space-y-1 text-[11px] text-stone-300">
+                      <li>Click the button below to open Firebase Settings.</li>
+                      <li>Scroll down to <strong>Authorized domains</strong> and click <strong>Add domain</strong>.</li>
+                      <li>Paste the domain shown above (also add <strong>vedik-vana.vercel.app</strong>).</li>
+                      <li>Click <strong>Done</strong>, then retry Google Sign-In!</li>
+                    </ol>
+                    <a
+                      href="https://console.firebase.google.com/project/vedik-vana-11b3e/authentication/settings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-lg bg-brand-gold text-brand-forest-950 font-bold text-xs hover:bg-brand-gold-light transition-all"
+                    >
+                      <span>Open Firebase Authorized Domains Settings →</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
                   </div>
                 )}
               </div>

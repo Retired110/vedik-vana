@@ -31,6 +31,27 @@ export async function POST(request: Request) {
       });
 
       if (!existingCustomer) {
+        // Check if an admin is attempting customer OTP login
+        const adminUser = await prisma.adminUser.findFirst({
+          where: {
+            OR: [
+              { email: cleanIdentifier },
+              { uniqueStaffId: cleanIdentifier.toUpperCase() },
+            ],
+          },
+        });
+
+        if (adminUser) {
+          return NextResponse.json(
+            {
+              success: false,
+              isAdmin: true,
+              message: 'This is a Merchant Admin account. Please switch to the Password tab or sign in at /admin/login.',
+            },
+            { status: 400 }
+          );
+        }
+
         return NextResponse.json(
           {
             success: false,
