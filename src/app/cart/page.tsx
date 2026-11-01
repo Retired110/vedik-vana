@@ -54,6 +54,20 @@ export default function CartPage() {
     if (res.success) setCouponCodeInput('');
   };
 
+  const handleProceedToCheckout = async () => {
+    try {
+      const res = await fetch('/api/auth/session');
+      const data = await res.json();
+      if (data?.isAuthenticated) {
+        router.push('/checkout');
+      } else {
+        router.push('/login?redirect=/checkout');
+      }
+    } catch {
+      router.push('/checkout');
+    }
+  };
+
   if (items.length === 0) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-20 text-center space-y-4">
@@ -272,7 +286,7 @@ export default function CartPage() {
             </div>
 
             <button
-              onClick={() => router.push('/checkout')}
+              onClick={handleProceedToCheckout}
               className="w-full py-3.5 px-6 rounded-xl font-bold text-sm bg-brand-forest text-white hover:bg-brand-forest-700 flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99]"
             >
               <span>Proceed to Delivery & Payment</span>

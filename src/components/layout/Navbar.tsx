@@ -40,6 +40,19 @@ export function Navbar({
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  // Check auth session
+  useEffect(() => {
+    fetch('/api/auth/session')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.isAuthenticated) {
+          setCurrentUser(data.customer || data.admin);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Debounced search
   useEffect(() => {
@@ -161,15 +174,28 @@ export function Navbar({
                 <Search className="w-5 h-5" />
               </button>
 
-              {/* Customer Sign In Button */}
-              <Link
-                href="/login"
-                className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-brand-forest bg-brand-ivory-warm hover:bg-brand-ivory-border transition-colors border border-brand-ivory-border shadow-xs whitespace-nowrap"
-                title="Customer Sign In & Account"
-              >
-                <User className="w-3.5 h-3.5 text-brand-gold-dark" />
-                <span>Sign In</span>
-              </Link>
+              {/* Customer Account / Sign In Button */}
+              {currentUser ? (
+                <Link
+                  href={currentUser.role ? '/admin' : '/account'}
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-brand-forest bg-brand-ivory-warm hover:bg-brand-ivory-border transition-colors border border-brand-ivory-border shadow-xs whitespace-nowrap"
+                  title="Your Sacred Account"
+                >
+                  <User className="w-3.5 h-3.5 text-emerald-700" />
+                  <span className="truncate max-w-[100px]">
+                    {currentUser.name ? currentUser.name.split(' ')[0] : 'Account'}
+                  </span>
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold text-brand-forest bg-brand-ivory-warm hover:bg-brand-ivory-border transition-colors border border-brand-ivory-border shadow-xs whitespace-nowrap"
+                  title="Customer Sign In & Account"
+                >
+                  <User className="w-3.5 h-3.5 text-brand-gold-dark" />
+                  <span>Sign In</span>
+                </Link>
+              )}
 
               {/* Cart Button */}
               <button
@@ -349,12 +375,12 @@ export function Navbar({
 
             <div className="pt-6 border-t border-brand-ivory-border space-y-3">
               <Link
-                href="/login"
+                href={currentUser ? (currentUser.role ? '/admin' : '/account') : '/login'}
                 onClick={() => setMobileMenuOpen(false)}
                 className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-brand-forest text-white font-medium text-sm shadow-sm"
               >
                 <User className="w-4 h-4 text-brand-gold" />
-                <span>Sign In / My Account</span>
+                <span>{currentUser ? (currentUser.role ? 'Merchant Admin Panel' : `My Account (${currentUser.name || 'Profile'})`) : 'Sign In / Register'}</span>
               </Link>
             </div>
           </div>

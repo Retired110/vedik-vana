@@ -1,9 +1,17 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getCustomerSession, getAdminSession } from '@/lib/auth';
 import crypto from 'crypto';
 
 export async function POST(request: Request) {
   try {
+    const customer = getCustomerSession();
+    const admin = getAdminSession();
+
+    if (!customer && !admin) {
+      return NextResponse.json({ success: false, message: 'Authentication required.' }, { status: 401 });
+    }
+
     const { orderId } = await request.json();
 
     const order = await prisma.order.findUnique({

@@ -29,9 +29,10 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTarget = searchParams?.get('redirect') || '/account';
+  const initialTab = (searchParams?.get('tab') === 'register' || searchParams?.get('mode') === 'register') ? 'REGISTER' : 'SIGN_IN';
 
   // Active Tab: 'SIGN_IN' | 'REGISTER'
-  const [activeTab, setActiveTab] = useState<'SIGN_IN' | 'REGISTER'>('SIGN_IN');
+  const [activeTab, setActiveTab] = useState<'SIGN_IN' | 'REGISTER'>(initialTab);
 
   // Sign In Mode: 'OTP' | 'PASSWORD'
   const [signInMode, setSignInMode] = useState<'OTP' | 'PASSWORD'>('OTP');
@@ -490,6 +491,19 @@ export default function LoginPage() {
 
         {/* Auth Card */}
         <div className="bg-brand-forest-900/80 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-brand-forest-800/80 shadow-2xl space-y-5">
+          {/* Checkout Login Notice */}
+          {redirectTarget === '/checkout' && (
+            <div className="p-4 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 text-brand-gold text-xs flex items-center gap-3">
+              <Lock className="w-5 h-5 shrink-0 text-brand-gold" />
+              <div className="space-y-0.5">
+                <p className="font-semibold text-white">Sign In to Complete Your Order</p>
+                <p className="text-[11px] text-stone-300">
+                  Your botanical cart is safely reserved. Sign in or create an account to proceed with delivery address and checkout.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* 1. Google 1-Click Sign In */}
           <button
             type="button"

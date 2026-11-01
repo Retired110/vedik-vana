@@ -30,6 +30,11 @@ export default function CheckoutPage() {
   const router = useRouter();
   const { items, subtotalPaise, discountPaise, shippingPaise, taxPaise, totalPaise, appliedCoupon, clearCart } = useCart();
 
+  // Authentication gating states
+  const [authChecking, setAuthChecking] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
   // Form states
   const [formData, setFormData] = useState({
     fullName: '',
@@ -42,21 +47,33 @@ export default function CheckoutPage() {
     pincode: '',
   });
 
-  // Pre-fill user data if authenticated
+  // Verify authentication on mount and pre-fill user profile
   useEffect(() => {
     fetch('/api/auth/session')
       .then((res) => res.json())
       .then((data) => {
-        if (data?.customer) {
-          setFormData((prev) => ({
-            ...prev,
-            fullName: prev.fullName || data.customer.name || '',
-            email: prev.email || data.customer.email || '',
-            phone: prev.phone || data.customer.phone || '',
-          }));
+        if (data?.isAuthenticated) {
+          setIsAuthenticated(true);
+          const user = data.customer || data.admin;
+          setCurrentUser(user);
+          if (user) {
+            setFormData((prev) => ({
+              ...prev,
+              fullName: prev.fullName || user.name || '',
+              email: prev.email || user.email || '',
+              phone: prev.phone || user.phone || '',
+            }));
+          }
+        } else {
+          setIsAuthenticated(false);
         }
       })
-      .catch(() => {});
+      .catch(() => {
+        setIsAuthenticated(false);
+      })
+      .finally(() => {
+        setAuthChecking(false);
+      });
   }, []);
 
   const [paymentMethod, setPaymentMethod] = useState<'RAZORPAY' | 'CASH_ON_DELIVERY'>('RAZORPAY');
@@ -74,6 +91,12 @@ export default function CheckoutPage() {
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isAuthenticated) {
+      router.push('/login?redirect=/checkout');
+      return;
+    }
+
     if (!formData.fullName || !formData.email || !formData.phone || !formData.addressLine1 || !formData.pincode) {
       setErrorMessage('Please fill in all mandatory delivery address fields.');
       return;
@@ -119,6 +142,11 @@ export default function CheckoutPage() {
       });
 
       const data = await res.json();
+
+      if (data.requireLogin) {
+        router.push('/login?redirect=/checkout');
+        return;
+      }
 
       if (!data.success) {
         throw new Error(data.message || 'Failed to create order.');
@@ -172,6 +200,17 @@ export default function CheckoutPage() {
     }
   };
 
+  if (authChecking) {
+    return (
+      <div className="max-w-xl mx-auto px-4 py-28 text-center space-y-4">
+        <div className="w-10 h-10 rounded-full border-2 border-brand-gold border-t-transparent animate-spin mx-auto" />
+        <p className="text-xs font-serif tracking-widest text-stone-500 uppercase">
+          Verifying Customer Sanctuary...
+        </p>
+      </div>
+    );
+  }
+
   if (items.length === 0 && !showRazorpayModal) {
     return (
       <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
@@ -197,8 +236,80 @@ export default function CheckoutPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
         {/* Left Form: Delivery & Payment (7 cols) */}
         <div className="lg:col-span-7 space-y-8">
-          <form onSubmit={handleSubmitOrder} className="space-y-8">
-            {/* Step 1: Contact Information */}
+          {!isAuthenticated ? (
+            <div className="p-8 sm:p-10 rounded-3xl bg-white border border-brand-gold/30 shadow-botanic-card space-y-6 text-center">
+              <div className="w-16 h-16 rounded-full bg-brand-forest/10 border border-brand-gold/40 mx-auto flex items-center justify-center text-brand-forest">
+                <Lock className="w-8 h-8 text-brand-gold" />
+              </div>
+              <div className="space-y-2">
+                <span className="text-[11px] font-semibold tracking-widest text-brand-gold uppercase">
+                  Sacred Checkout Protection
+                </span>
+                <h2 className="font-serif text-2xl font-bold text-brand-charcoal">
+                  Sign In Required to Place Order
+                </h2>
+                <p className="text-xs text-stone-600 max-w-md mx-auto leading-relaxed">
+                  Vedik Vana authenticates every order to guarantee purity batch verification, provide real-time WhatsApp & Email shipment tracking, and protect customer sanctuary data.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-brand-ivory-warm border border-brand-ivory-border text-xs text-brand-charcoal space-y-1">
+                <p className="font-semibold text-brand-forest">
+                  ✨ Your cart is reserved ({items.length} {items.length === 1 ? 'item' : 'items'} • {formatPrice(totalPaise)})
+                </p>
+                <p className="text-[11px] text-stone-500">
+                  Signing in takes under 30 seconds. You will be redirected right back to complete your order.
+                </p>
+              </div>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+                <Link
+                  href="/login?redirect=/checkout"
+                  className="px-6 py-3.5 rounded-full font-bold text-xs bg-brand-forest text-white hover:bg-brand-forest-700 flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99]"
+                >
+                  <Lock className="w-4 h-4" />
+                  <span>Sign In to Complete Order</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+
+                <Link
+                  href="/login?redirect=/checkout&tab=register"
+                  className="px-6 py-3.5 rounded-full font-semibold text-xs border border-brand-forest text-brand-forest hover:bg-brand-ivory-warm flex items-center justify-center gap-2 transition-colors"
+                >
+                  <span>Create New Account</span>
+                </Link>
+              </div>
+
+              <div className="pt-4 border-t border-stone-100 flex items-center justify-center gap-6 text-[11px] text-stone-500">
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                  100% Purity Certified
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Truck className="w-4 h-4 text-emerald-700" />
+                  Express Tracked Courier
+                </span>
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmitOrder} className="space-y-8">
+              {/* Authenticated User Status Chip */}
+              <div className="p-3.5 rounded-2xl bg-emerald-50/80 border border-emerald-200 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+                  <span>
+                    Signed in as <strong className="text-emerald-950">{currentUser?.name || currentUser?.email}</strong> ({currentUser?.email})
+                  </span>
+                </div>
+                <Link
+                  href="/login?redirect=/checkout"
+                  className="text-[11px] font-semibold text-brand-forest hover:underline shrink-0"
+                >
+                  Switch Account
+                </Link>
+              </div>
+
+              {/* Step 1: Contact Information */}
             <div className="p-6 rounded-3xl bg-white border border-brand-ivory-border shadow-botanic-card space-y-4">
               <h2 className="font-serif text-lg font-bold text-brand-charcoal flex items-center gap-2">
                 <span className="w-6 h-6 rounded-full bg-brand-forest text-white text-xs flex items-center justify-center font-sans">
@@ -406,6 +517,7 @@ export default function CheckoutPage() {
               <span>{isSubmitting ? 'Processing Order...' : `Complete Order • ${formatPrice(totalPaise)}`}</span>
             </button>
           </form>
+          )}
         </div>
 
         {/* Right Column: Order Summary (5 cols) */}

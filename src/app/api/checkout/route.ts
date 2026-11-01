@@ -1,9 +1,24 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { sendCustomerOrderConfirmationEmail, sendMerchantNewOrderNotificationEmail } from '@/lib/email';
+import { getCustomerSession, getAdminSession } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    // Strict authentication gate: Ordering is strictly restricted to authenticated accounts
+    const customerSession = getCustomerSession();
+    const adminSession = getAdminSession();
+
+    if (!customerSession && !adminSession) {
+      return NextResponse.json(
+        {
+          success: false,
+          requireLogin: true,
+          message: 'Authentication required. Please sign in or create an account to complete your order.',
+        },
+        { status: 401 }
+      );
+    }
     const body = await request.json();
     const {
       customerName,
@@ -174,23 +189,27 @@ export async function POST(request: Request) {
       const orderNumber = `VV-${new Date().getFullYear()}-${String(1001 + orderCount).padStart(4, '0')}`;
       const deliveryOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
-      // Link existing registered customer if available
-      const matchedCustomer = await tx.customer.findFirst({
-        where: {
-          OR: [
-            { email: customerEmail.trim().toLowerCase() },
-            { phone: customerPhone.trim() },
-          ],
-        },
-      });
+      // Link authenticated customer account directly, or match registered customer for admin test checkout
+      let assignedCustomerId: string | null = customerSession?.customerId || null;
+      if (!assignedCustomerId) {
+        const matchedCustomer = await tx.customer.findFirst({
+          where: {
+            OR: [
+              { email: (customerSession?.email || customerEmail).trim().toLowerCase() },
+              { phone: customerPhone.trim() },
+            ],
+          },
+        });
+        assignedCustomerId = matchedCustomer?.id || null;
+      }
 
       // Create Order
       const newOrder = await tx.order.create({
         data: {
           orderNumber,
-          customerId: matchedCustomer?.id || null,
+          customerId: assignedCustomerId,
           customerName,
-          customerEmail,
+          customerEmail: customerSession?.email || customerEmail,
           customerPhone,
           shippingAddress: typeof shippingAddress === 'string' ? shippingAddress : JSON.stringify(shippingAddress),
           subtotalPaise,

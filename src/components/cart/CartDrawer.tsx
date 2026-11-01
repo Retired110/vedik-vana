@@ -57,9 +57,19 @@ export function CartDrawer() {
     if (res.success) setCouponCodeInput('');
   };
 
-  const handleCheckoutClick = () => {
+  const handleCheckoutClick = async () => {
     setIsCartOpen(false);
-    router.push('/checkout');
+    try {
+      const res = await fetch('/api/auth/session');
+      const data = await res.json();
+      if (data?.isAuthenticated) {
+        router.push('/checkout');
+      } else {
+        router.push('/login?redirect=/checkout');
+      }
+    } catch {
+      router.push('/checkout');
+    }
   };
 
   return (
