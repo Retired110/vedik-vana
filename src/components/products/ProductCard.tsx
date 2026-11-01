@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ShoppingBag, Star, Sparkles, Check, AlertTriangle } from 'lucide-react';
 import { formatPrice, calculateDiscount, getStockStatus } from '@/lib/formatters';
 import { useCart } from '@/lib/cart-context';
+import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   product: {
@@ -160,11 +161,12 @@ export function ProductCard({ product }: ProductCardProps) {
             <button
               onClick={handleQuickAdd}
               disabled={!stockInfo.isPurchasable}
-              className={`p-2.5 rounded-xl flex items-center justify-center transition-all ${
+              className={cn(
+                'p-2.5 rounded-xl flex items-center justify-center transition-all',
                 stockInfo.isPurchasable
                   ? 'bg-brand-forest text-white hover:bg-brand-forest-700 shadow-sm active:scale-95'
                   : 'bg-stone-100 text-stone-400 cursor-not-allowed'
-              }`}
+              )}
               title={stockInfo.isPurchasable ? 'Add to Cart' : 'Out of Stock'}
               aria-label={`Add ${product.name} to cart`}
             >

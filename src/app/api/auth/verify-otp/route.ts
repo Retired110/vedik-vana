@@ -3,22 +3,32 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { createCustomerToken, setCustomerCookie } from '@/lib/auth';
 import { verifyOtpCode } from '@/lib/otp-service';
+import { otpVerifySchema } from '@/schemas/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const { identifier, code, type = 'LOGIN', name, password, email, phone } = await request.json();
+    const body = await request.json();
+    const { identifier, code, type = 'LOGIN', name, password, email, phone } = body;
 
     if (!identifier || !code) {
       return NextResponse.json(
-        { success: false, message: 'Please provide verification code and email/phone.' },
+        { success: false, message: 'Please provide both your verification code and email/phone.' },
+        { status: 400 }
+      );
+    }
+
+    const codeValidation = otpVerifySchema.safeParse({ code: String(code).trim() });
+    if (!codeValidation.success) {
+      return NextResponse.json(
+        { success: false, message: codeValidation.error.issues[0]?.message || 'Verification code must be exactly 6 digits.' },
         { status: 400 }
       );
     }
 
     const cleanIdentifier = identifier.trim().toLowerCase();
-    const cleanCode = code.trim();
+    const cleanCode = codeValidation.data.code;
 
     // 1. Verify OTP code using secure hashed verification service
     const verifyResult = await verifyOtpCode(cleanIdentifier, cleanCode, type);

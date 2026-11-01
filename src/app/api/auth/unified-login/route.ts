@@ -2,20 +2,22 @@ import { NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/lib/db';
 import { createCustomerToken, setCustomerCookie, createAdminToken, setAdminCookie } from '@/lib/auth';
+import { passwordLoginSchema } from '@/schemas/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const { identifier, password } = await request.json();
-
-    if (!identifier || !password) {
+    const body = await request.json();
+    const result = passwordLoginSchema.safeParse(body);
+    if (!result.success) {
       return NextResponse.json(
-        { success: false, message: 'Please enter your registered email/phone and password.' },
+        { success: false, message: result.error.issues[0]?.message || 'Please enter valid credentials.' },
         { status: 400 }
       );
     }
 
+    const { identifier, password } = result.data;
     const cleanIdentifier = identifier.trim().toLowerCase();
 
     // 1. Try Customer Account

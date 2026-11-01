@@ -1,19 +1,23 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { createAndSendOtp } from '@/lib/otp-service';
+import { otpRequestSchema } from '@/schemas/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
   try {
-    const { identifier, type = 'LOGIN', channel = 'AUTO', checkOnly = false } = await request.json();
-
-    if (!identifier || !identifier.trim()) {
+    const body = await request.json();
+    const validation = otpRequestSchema.safeParse(body);
+    if (!validation.success) {
       return NextResponse.json(
-        { success: false, message: 'Please enter a valid mobile number or email address.' },
+        { success: false, message: validation.error.issues[0]?.message || 'Please enter a valid mobile number or email address.' },
         { status: 400 }
       );
     }
+
+    const { identifier } = validation.data;
+    const { type = 'LOGIN', channel = 'AUTO', checkOnly = false } = body;
 
     const cleanIdentifier = identifier.trim().toLowerCase();
 
