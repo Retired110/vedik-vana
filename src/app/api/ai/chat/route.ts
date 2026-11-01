@@ -102,41 +102,46 @@ Formatting Guidelines:
 
     // --- Cascade 1: Google Gemini API (if key configured) ---
     if (!botResponse && geminiKey && geminiKey.length > 10 && geminiKey !== 'sampleSecret456') {
-      try {
-        const geminiRes = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                {
-                  role: 'user',
-                  parts: [
-                    {
-                      text: `${systemInstruction}\n\nUser Question: ${cleanMsg}\nPlease respond humbly in ${langObj.name} (${langObj.nativeName}):`,
-                    },
-                  ],
+      const candidateModels = ['gemini-3.8-flash', 'gemini-2.5-flash', 'gemini-flash-latest', 'gemini-1.5-flash'];
+      for (const model of candidateModels) {
+        if (botResponse) break;
+        try {
+          const geminiRes = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [
+                      {
+                        text: `${systemInstruction}\n\nUser Question: ${cleanMsg}\nPlease respond humbly in ${langObj.name} (${langObj.nativeName}):`,
+                      },
+                    ],
+                  },
+                ],
+                generationConfig: {
+                  temperature: 0.35,
+                  maxOutputTokens: 750,
                 },
-              ],
-              generationConfig: {
-                temperature: 0.35,
-                maxOutputTokens: 750,
-              },
-            }),
-          }
-        );
+              }),
+            }
+          );
 
-        if (geminiRes.ok) {
-          const geminiData = await geminiRes.json();
-          const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) {
-            botResponse = text;
-            modelUsed = 'Google Gemini 1.5 Flash';
+          if (geminiRes.ok) {
+            const geminiData = await geminiRes.json();
+            const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (text) {
+              botResponse = text;
+              modelUsed = `Google Gemini (${model})`;
+              break;
+            }
           }
+        } catch (err: any) {
+          console.warn(`Gemini API call failed for ${model}:`, err.message);
         }
-      } catch (err: any) {
-        console.warn('Gemini API call failed, cascading to next engine:', err.message);
       }
     }
 

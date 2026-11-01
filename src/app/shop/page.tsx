@@ -151,9 +151,8 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                 <li>
                   <Link
                     href={`/shop${q ? `?q=${q}` : ''}`}
-                    className={`flex items-center justify-between py-1 transition-colors ${
-                      !category ? 'font-bold text-brand-forest' : 'text-stone-600 hover:text-brand-forest'
-                    }`}
+                    className={`flex items-center justify-between py-1 transition-colors ${!category ? 'font-bold text-brand-forest' : 'text-stone-600 hover:text-brand-forest'
+                      }`}
                   >
                     <span>All Products</span>
                     <span className="text-stone-400">({totalCount})</span>
@@ -163,11 +162,10 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                   <li key={cat.id}>
                     <Link
                       href={`/shop?category=${cat.slug}${q ? `&q=${q}` : ''}`}
-                      className={`flex items-center justify-between py-1 transition-colors ${
-                        category === cat.slug
+                      className={`flex items-center justify-between py-1 transition-colors ${category === cat.slug
                           ? 'font-bold text-brand-forest'
                           : 'text-stone-600 hover:text-brand-forest'
-                      }`}
+                        }`}
                     >
                       <span>{cat.name}</span>
                       <span className="text-stone-400">({cat._count.products})</span>
@@ -198,11 +196,10 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                       maxPrice: range.max,
                       sort,
                     }).toString()}`}
-                    className={`block py-1 ${
-                      minPrice === range.min && maxPrice === range.max
+                    className={`block py-1 ${minPrice === range.min && maxPrice === range.max
                         ? 'font-bold text-brand-forest'
                         : 'text-stone-600 hover:text-brand-forest'
-                    }`}
+                      }`}
                   >
                     {range.label}
                   </Link>
@@ -222,14 +219,12 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                   ...(stock === 'in_stock' ? {} : { stock: 'in_stock' }),
                   sort,
                 }).toString()}`}
-                className={`inline-flex items-center gap-2 text-xs ${
-                  stock === 'in_stock' ? 'text-brand-forest font-bold' : 'text-stone-600 hover:text-brand-forest'
-                }`}
+                className={`inline-flex items-center gap-2 text-xs ${stock === 'in_stock' ? 'text-brand-forest font-bold' : 'text-stone-600 hover:text-brand-forest'
+                  }`}
               >
                 <div
-                  className={`w-4 h-4 rounded border flex items-center justify-center ${
-                    stock === 'in_stock' ? 'bg-brand-forest border-brand-forest text-white' : 'border-stone-300'
-                  }`}
+                  className={`w-4 h-4 rounded border flex items-center justify-center ${stock === 'in_stock' ? 'bg-brand-forest border-brand-forest text-white' : 'border-stone-300'
+                    }`}
                 >
                   {stock === 'in_stock' && '✓'}
                 </div>
@@ -268,11 +263,10 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
                       ...(stock ? { stock } : {}),
                       sort: s.key,
                     }).toString()}`}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                      sort === s.key
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${sort === s.key
                         ? 'bg-brand-forest text-white shadow-sm'
                         : 'bg-white text-stone-600 hover:bg-brand-ivory-warm border border-brand-ivory-border'
-                    }`}
+                      }`}
                   >
                     {s.label}
                   </Link>

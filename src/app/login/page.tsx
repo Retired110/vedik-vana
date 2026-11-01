@@ -175,7 +175,7 @@ export default function LoginPage() {
   const handleSendLoginOtp = async () => {
     const cleanEmail = emailInput.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMsg('Email address is compulsory. Please enter a valid email.');
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
 
@@ -298,7 +298,7 @@ export default function LoginPage() {
     }
     const cleanEmail = regEmail.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
-      setErrorMsg('Email is compulsory for account verification and order receipts.');
+      setErrorMsg('Please enter a valid email for account verification and order receipts.');
       return;
     }
     if (!regPassword || regPassword.length < 6) {

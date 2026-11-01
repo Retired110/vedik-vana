@@ -387,11 +387,10 @@ export function VedaMitraChat() {
                 className={`flex flex-col ${msg.sender === 'user' ? 'items-end' : 'items-start'}`}
               >
                 <div
-                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 leading-relaxed shadow-sm ${
-                    msg.sender === 'user'
+                  className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 leading-relaxed shadow-sm ${msg.sender === 'user'
                       ? 'bg-brand-gold text-brand-forest-950 font-medium rounded-br-xs'
                       : 'bg-brand-forest-900/90 text-stone-200 border border-brand-forest-800 rounded-bl-xs'
-                  }`}
+                    }`}
                 >
                   {renderMessageContent(msg.text)}
                 </div>
