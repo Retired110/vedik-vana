@@ -183,3 +183,255 @@ export function generateOrderConfirmationHtml(order: any, settings?: any): strin
 </html>
 `;
 }
+
+import nodemailer from 'nodemailer';
+
+/**
+ * Automatically dispatches confirmation email to customer after order is saved.
+ */
+export async function sendCustomerOrderConfirmationEmail(
+  order: any,
+  settings?: any
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const emailHtml = generateOrderConfirmationHtml(order, settings);
+    const storeName = settings?.storeName || 'Vedik Vana';
+    const customerEmail = order.customerEmail?.trim();
+
+    if (!customerEmail || !customerEmail.includes('@')) {
+      return { success: false, error: 'Invalid customer email address' };
+    }
+
+    const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+
+    if (gmailUser && gmailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass.replace(/\s+/g, ''),
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${storeName}" <${gmailUser}>`,
+        to: customerEmail,
+        subject: `Order Confirmed #${order.orderNumber} — Thank You for Choosing ${storeName}`,
+        html: emailHtml,
+      });
+
+      console.log(`[Email] Customer order confirmation sent to ${customerEmail} for #${order.orderNumber}`);
+      return { success: true };
+    }
+
+    // Fallback: Resend API if configured
+    const resendKey = process.env.RESEND_API_KEY;
+    if (resendKey) {
+      const fromEmail = process.env.EMAIL_FROM || `${storeName} <orders@resend.dev>`;
+      const res = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: [customerEmail],
+          subject: `Order Confirmed #${order.orderNumber} — ${storeName}`,
+          html: emailHtml,
+        }),
+      });
+
+      if (res.ok) {
+        return { success: true };
+      }
+    }
+
+    console.log(`[Dev Mode] Order confirmation email logged for #${order.orderNumber} (${customerEmail})`);
+    return { success: true };
+  } catch (err: any) {
+    console.error('[Email Error] Failed to send customer confirmation:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Automatically notifies merchant administrator of a new incoming customer order.
+ */
+export async function sendMerchantNewOrderNotificationEmail(
+  order: any,
+  settings?: any
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const storeName = settings?.storeName || 'Vedik Vana';
+    const merchantEmail = settings?.contactEmail || process.env.GMAIL_USER || 'admin@vedikvana.com';
+    const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+
+    const itemsSummary = order.items
+      ?.map(
+        (i: any) =>
+          `• ${i.productName}${i.variantName ? ` (${i.variantName})` : ''} × ${i.quantity} — ₹${(i.totalPaise / 100).toLocaleString('en-IN')}`
+      )
+      .join('<br>');
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vedik-vana.vercel.app';
+
+    const merchantHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #292524; background: #faf8f5;">
+        <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e7e2d9; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+          <div style="background: #1c2826; padding: 24px; text-align: center;">
+            <h1 style="color: #ffffff; font-size: 18px; margin: 0; letter-spacing: 1.5px;">VEDIK VANA MERCHANT ALERT</h1>
+            <p style="color: #c9a84e; font-size: 11px; margin: 4px 0 0 0; text-transform: uppercase;">New Order Placed</p>
+          </div>
+          <div style="padding: 28px;">
+            <h2 style="font-size: 20px; color: #1c2826; margin-top: 0;">Order #${order.orderNumber}</h2>
+            <div style="background: #fbf7ee; border-radius: 12px; padding: 16px; margin: 16px 0; font-size: 13px; line-height: 1.8;">
+              <strong>Customer:</strong> ${order.customerName}<br>
+              <strong>Email:</strong> ${order.customerEmail}<br>
+              <strong>Phone:</strong> ${order.customerPhone}<br>
+              <strong>Payment:</strong> ${order.paymentMethod} (${order.paymentStatus})<br>
+              <strong>Total Amount:</strong> <span style="font-size: 16px; font-weight: bold; color: #065f46;">₹${(order.totalPaise / 100).toLocaleString('en-IN')}</span><br>
+              <strong>Doorstep Delivery OTP:</strong> <span style="font-family: monospace; font-weight: bold; color: #9a761e; font-size: 16px;">${order.deliveryOtp}</span>
+            </div>
+
+            <div style="margin: 20px 0; font-size: 13px;">
+              <strong>Items to Pack & Prepare:</strong>
+              <div style="margin-top: 8px; line-height: 1.6; color: #57534e;">
+                ${itemsSummary}
+              </div>
+            </div>
+
+            <div style="text-align: center; margin-top: 28px;">
+              <a href="${appUrl}/admin/orders" style="display: inline-block; padding: 12px 28px; background: #1c2826; color: #c9a84e; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 13px; letter-spacing: 0.5px;">
+                Open Merchant Order Queue →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (gmailUser && gmailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass.replace(/\s+/g, ''),
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${storeName} Alerts" <${gmailUser}>`,
+        to: merchantEmail,
+        subject: `🔔 [NEW ORDER #${order.orderNumber}] ${order.customerName} — ₹${(order.totalPaise / 100).toLocaleString('en-IN')}`,
+        html: merchantHtml,
+      });
+
+      console.log(`[Email] Merchant notification sent to ${merchantEmail} for #${order.orderNumber}`);
+      return { success: true };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[Email Error] Failed to send merchant notification:', err.message);
+    return { success: false, error: err.message };
+  }
+}
+
+/**
+ * Automatically notifies customer when order moves to PROCESSING, SHIPPED, or DELIVERED.
+ */
+export async function sendCustomerOrderStatusUpdateEmail(
+  order: any,
+  settings: any,
+  newStatus: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const storeName = settings?.storeName || 'Vedik Vana';
+    const customerEmail = order.customerEmail?.trim();
+    if (!customerEmail || !customerEmail.includes('@')) return { success: false };
+
+    const gmailUser = process.env.GMAIL_USER || process.env.SMTP_USER;
+    const gmailPass = process.env.GMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+
+    let subject = '';
+    let statusHeading = '';
+    let statusMessage = '';
+
+    if (newStatus === 'SHIPPED') {
+      subject = `Your Order #${order.orderNumber} Has Been Dispatched! 🚚`;
+      statusHeading = 'Order Dispatched with Express Courier';
+      statusMessage = `Your sacred botanical formulations have been carefully sealed and dispatched via <strong>${order.courierName || 'Express Courier'}</strong>. Tracking number: <strong style="font-family: monospace;">${order.trackingNumber || 'Available shortly'}</strong>.`;
+    } else if (newStatus === 'DELIVERED') {
+      subject = `Delivered: Your Vedik Vana Order #${order.orderNumber} Has Arrived! 🌿`;
+      statusHeading = 'Order Successfully Delivered';
+      statusMessage = `Your order has been delivered at your doorstep. We hope these sacred botanicals bring health, vitality, and peace to your daily ritual.`;
+    } else if (newStatus === 'FULFILLED') {
+      subject = `Order #${order.orderNumber} is Packed & Sealed for Courier Handover 📦`;
+      statusHeading = 'Order Packed & Fulfilled';
+      statusMessage = `Your sacred formulations have passed final purity inspection, sealed in tamper-evident packaging, and are awaiting handover to the express courier partner.`;
+    } else if (newStatus === 'PROCESSING') {
+      subject = `Order #${order.orderNumber} is Being Handcrafted & Packaged 🌿`;
+      statusHeading = 'Order Accepted & In Preparation';
+      statusMessage = `Our master apothecaries have accepted your order and are currently preparing your formulations under strict batch standards.`;
+    } else {
+      return { success: true };
+    }
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://vedik-vana.vercel.app';
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #faf8f5; padding: 24px; color: #292524;">
+        <div style="max-width: 560px; margin: 0 auto; background: #ffffff; border-radius: 16px; border: 1px solid #e7e2d9; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.04);">
+          <div style="background: #1c2826; padding: 24px; text-align: center;">
+            <h1 style="color: #ffffff; font-size: 18px; margin: 0; letter-spacing: 2px;">${storeName.toUpperCase()}</h1>
+            <p style="color: #c9a84e; font-size: 11px; margin: 4px 0 0 0; text-transform: uppercase;">Sacred Botanical Living</p>
+          </div>
+          <div style="padding: 28px;">
+            <h2 style="font-size: 18px; color: #1c2826; margin-top: 0;">${statusHeading}</h2>
+            <p style="font-size: 14px; color: #57534e; line-height: 1.6;">${statusMessage}</p>
+            <div style="background: #fbf7ee; border-left: 4px solid #c9a84e; padding: 14px; margin: 20px 0; font-size: 13px; line-height: 1.8;">
+              <strong>Order ID:</strong> ${order.orderNumber}<br>
+              <strong>Status:</strong> <span style="font-weight: bold; color: #065f46;">${newStatus}</span><br>
+              ${order.courierName ? `<strong>Courier:</strong> ${order.courierName}<br>` : ''}
+              ${order.trackingNumber ? `<strong>Tracking Number:</strong> <span style="font-family: monospace;">${order.trackingNumber}</span><br>` : ''}
+              <strong>Doorstep Delivery OTP:</strong> <span style="font-family: monospace; font-weight: bold; color: #9a761e;">${order.deliveryOtp}</span>
+            </div>
+            <div style="text-align: center; margin-top: 24px;">
+              <a href="${appUrl}/order-success/${order.orderNumber}" style="display: inline-block; padding: 10px 24px; background: #1c2826; color: #c9a84e; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 13px;">
+                Track Live Order Status →
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    if (gmailUser && gmailPass) {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: gmailUser,
+          pass: gmailPass.replace(/\s+/g, ''),
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"${storeName}" <${gmailUser}>`,
+        to: customerEmail,
+        subject,
+        html,
+      });
+
+      console.log(`[Email] Status update (${newStatus}) sent to ${customerEmail} for #${order.orderNumber}`);
+      return { success: true };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('[Email Error] Status update email failed:', err.message);
+    return { success: false, error: err.message };
+  }
+}

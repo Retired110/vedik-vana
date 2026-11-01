@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { getAdminSession } from '@/lib/auth';
+import { sendCustomerOrderStatusUpdateEmail } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,6 +132,14 @@ export async function PUT(request: Request) {
 
       return ord;
     });
+
+    // Notify customer on key fulfillment lifecycle changes (non-blocking)
+    if (status && status !== existingOrder.status && ['PROCESSING', 'FULFILLED', 'SHIPPED', 'DELIVERED'].includes(status)) {
+      prisma.storeSettings
+        .findUnique({ where: { id: 'default' } })
+        .then((settings) => sendCustomerOrderStatusUpdateEmail(updated, settings, status))
+        .catch((err) => console.error('Error sending order status update email:', err));
+    }
 
     return NextResponse.json({
       success: true,

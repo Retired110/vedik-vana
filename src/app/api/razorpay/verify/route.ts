@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { sendCustomerOrderConfirmationEmail, sendMerchantNewOrderNotificationEmail } from '@/lib/email';
 import crypto from 'crypto';
 
 export async function POST(request: Request) {
@@ -52,7 +53,14 @@ export async function POST(request: Request) {
         status: 'CONFIRMED',
         razorpayPaymentId: razorpayPaymentId || `pay_${crypto.randomBytes(6).toString('hex')}`,
       },
+      include: { items: true },
     });
+
+    // Dispatch customer confirmation and merchant alerts
+    Promise.allSettled([
+      sendCustomerOrderConfirmationEmail(updated, settings),
+      sendMerchantNewOrderNotificationEmail(updated, settings),
+    ]).catch((err) => console.error('Error dispatching paid order emails:', err));
 
     return NextResponse.json({
       success: true,

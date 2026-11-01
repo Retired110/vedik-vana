@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { sendCustomerOrderConfirmationEmail, sendMerchantNewOrderNotificationEmail } from '@/lib/email';
 
 export async function POST(request: Request) {
   try {
@@ -214,6 +215,14 @@ export async function POST(request: Request) {
 
       return newOrder;
     });
+
+    // Asynchronously dispatch confirmation emails (non-blocking for checkout speed and resilience)
+    if (result.paymentMethod === 'CASH_ON_DELIVERY') {
+      Promise.allSettled([
+        sendCustomerOrderConfirmationEmail(result, settings),
+        sendMerchantNewOrderNotificationEmail(result, settings),
+      ]).catch((err) => console.error('Error dispatching order emails:', err));
+    }
 
     return NextResponse.json({
       success: true,
